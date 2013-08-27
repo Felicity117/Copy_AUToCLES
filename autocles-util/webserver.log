@@ -1,0 +1,80 @@
+[INFO] Scanning for projects...
+[INFO]                                                                         
+[INFO] ------------------------------------------------------------------------
+[INFO] Building autocles-webapp 0.0.1-SNAPSHOT
+[INFO] ------------------------------------------------------------------------
+Downloading: https://repository.jboss.org/nexus/content/groups/public/sge-simulation/sge-simulation/0.0.1-SNAPSHOT/maven-metadata.xml
+Downloading: http://www.infosys.tuwien.ac.at/mvn/sge-simulation/sge-simulation/0.0.1-SNAPSHOT/maven-metadata.xml
+[INFO] 
+[INFO] --- maven-clean-plugin:2.4.1:clean (default-clean) @ autocles-webapp ---
+[INFO] Deleting /home/hummer/eclipse/elasticTest/workspace/WebApp/target
+[INFO] 
+[INFO] --- maven-resources-plugin:2.5:resources (default-resources) @ autocles-webapp ---
+[debug] execute contextualize
+[INFO] Using 'UTF-8' encoding to copy filtered resources.
+[INFO] skip non existing resourceDirectory /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/resources
+[INFO] 
+[INFO] --- maven-compiler-plugin:3.0:compile (default-compile) @ autocles-webapp ---
+[INFO] Changes detected - recompiling the module!
+[INFO] Compiling 2 source files to /home/hummer/eclipse/elasticTest/workspace/WebApp/target/classes
+[INFO] -------------------------------------------------------------
+[WARNING] COMPILATION WARNING : 
+[INFO] -------------------------------------------------------------
+[WARNING] Note: /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/AuthCheckHandler.java uses unchecked or unsafe operations.
+[WARNING] Note: Recompile with -Xlint:unchecked for details.
+[INFO] 2 warnings 
+[INFO] -------------------------------------------------------------
+[INFO] -------------------------------------------------------------
+[ERROR] COMPILATION ERROR : 
+[INFO] -------------------------------------------------------------
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[31,31] package at.ac.tuwien.dsg.jopera does not exist
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[32,38] package at.ac.tuwien.dsg.jopera.JOpera does not exist
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[75,17] cannot find symbol
+symbol  : class JOpera
+location: class at.ac.tuwien.dsg.jsf.UIBean
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[75,37] cannot find symbol
+symbol  : class JOpera
+location: class at.ac.tuwien.dsg.jsf.UIBean
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[187,42] cannot find symbol
+symbol  : method getRow()
+location: class java.lang.Process
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[506,72] cannot find symbol
+symbol  : method instance(java.lang.String)
+location: class java.lang.Process
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[735,30] cannot find symbol
+symbol  : class JOpera
+location: class at.ac.tuwien.dsg.jsf.UIBean
+[INFO] 7 errors 
+[INFO] -------------------------------------------------------------
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time: 14.892s
+[INFO] Finished at: Tue Aug 27 15:14:55 CEST 2013
+[INFO] Final Memory: 21M/126M
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.apache.maven.plugins:maven-compiler-plugin:3.0:compile (default-compile) on project autocles-webapp: Compilation failure: Compilation failure:
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[31,31] package at.ac.tuwien.dsg.jopera does not exist
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[32,38] package at.ac.tuwien.dsg.jopera.JOpera does not exist
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[75,17] cannot find symbol
+[ERROR] symbol  : class JOpera
+[ERROR] location: class at.ac.tuwien.dsg.jsf.UIBean
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[75,37] cannot find symbol
+[ERROR] symbol  : class JOpera
+[ERROR] location: class at.ac.tuwien.dsg.jsf.UIBean
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[187,42] cannot find symbol
+[ERROR] symbol  : method getRow()
+[ERROR] location: class java.lang.Process
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[506,72] cannot find symbol
+[ERROR] symbol  : method instance(java.lang.String)
+[ERROR] location: class java.lang.Process
+[ERROR] /home/hummer/eclipse/elasticTest/workspace/WebApp/src/main/java/at/ac/tuwien/dsg/jsf/UIBean.java:[735,30] cannot find symbol
+[ERROR] symbol  : class JOpera
+[ERROR] location: class at.ac.tuwien.dsg.jsf.UIBean
+[ERROR] -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/MojoFailureException

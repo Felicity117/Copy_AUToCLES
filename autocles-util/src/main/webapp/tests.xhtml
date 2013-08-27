@@ -1,0 +1,100 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:x="http://myfaces.apache.org/extensions"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:r="http://richfaces.org/rich"
+	xmlns:t="http://myfaces.apache.org/tomahawk">
+<body>
+	<h:form>
+		<h1>Tests</h1>
+ 		<h:messages style="color:red;margin:8px;" />
+		<h:dataTable value="#{uiBean.testDetails.rows}" var="t">
+			<ui:param name="testAttr" value='#{uiBean.cat("test=",t.col1)}' />
+			<h:column>
+				<f:facet name="header">ID</f:facet>
+				#{t.col1}
+			</h:column>
+			<h:column>
+				<f:facet name="header">Name</f:facet>
+				<a href='#{uiBean.url("t=tests", testAttr)}'>#{t.col2}</a>
+			</h:column>
+			<h:column>
+				<f:facet name="header">Instances</f:facet>
+				#{t.col3}
+			</h:column>
+		</h:dataTable>
+		<ui:param name="testParam" value='#{uiBean.param("test")}' />
+		<h:panelGroup rendered='#{testParam != null}'>
+			<h2>Instances for Test #{testParam}</h2>
+			<h:dataTable value="#{uiBean.selectedTest.rows}" var="i">
+				<ui:param name="instAttr" value='#{uiBean.cat("inst=",i.col1)}' />
+				<h:column>
+					<f:facet name="header">ID</f:facet>
+					<a href='#{uiBean.url("t=tests", instAttr)}'>#{i.col1}</a>
+				</h:column>
+				<h:column>
+					<f:facet name="header">Tasks</f:facet>
+					#{i.col2}
+				</h:column>
+				<h:column>
+					<f:facet name="header">Links</f:facet>
+<!-- 					<a href="#{uiBean.getProxyUrl(i.col3)}">Service Live Feeds</a><br/> -->
+					<h:panelGroup rendered="#{!uiBean.isEmpty(i.col3)}">
+						<a href='#{uiBean.url("t=charts", instAttr)}'>Live Feeds</a>
+					</h:panelGroup>
+					<h:panelGroup rendered="#{uiBean.isEmpty(i.col3)}">
+						Currently no live feeds available.
+					</h:panelGroup>
+				</h:column>
+				<h:column>
+					<f:facet name="header">Client Results</f:facet>
+					<h:panelGroup rendered="#{!uiBean.isEmpty(i.col5)}">
+						<a href='#{i.col5}&amp;attachment=jtl' target="_blank">Download Results</a><br/>
+						<a href='#{uiBean.url("t=results", "results=clients", instAttr)}'>See Results</a>
+					</h:panelGroup>
+					<h:panelGroup rendered="#{uiBean.isEmpty(i.col5)}">
+						No Results Available
+					</h:panelGroup>
+				</h:column>
+				<h:column>
+					<f:facet name="header">Server Results</f:facet>
+					<h:panelGroup rendered="#{!uiBean.isEmpty(i.col6)}">
+						<a href='#{i.col6}'>See Results</a>
+					</h:panelGroup>
+					<h:panelGroup rendered="#{uiBean.isEmpty(i.col6)}">
+						No Results Available
+					</h:panelGroup>
+				</h:column>
+				<h:column>
+					<f:facet name="header">Controller Results</f:facet>
+					<h:panelGroup rendered="#{!uiBean.isEmpty(i.col7)}">
+						<a href='#{i.col7}'>See Results</a>
+					</h:panelGroup>
+					<h:panelGroup rendered="#{uiBean.isEmpty(i.col7)}">
+						No Results Available
+					</h:panelGroup>
+				</h:column>
+			</h:dataTable>
+			<h:panelGroup rendered='#{uiBean.param("inst") != null}'>
+				<h2>Tasks for Instance #{uiBean.param("inst")}</h2>
+				<h:dataTable value='#{uiBean.selectedTest.instance( uiBean.param("inst") ).rows}' var="t">
+					<h:column>
+						<f:facet name="header">ID</f:facet>
+						<a href='#{uiBean.url("t=tests", uiBean.cat("task=",t.col1))}'>#{t.col1}</a>
+					</h:column>
+					<h:column>
+						<f:facet name="header">Parameters</f:facet>
+						<a href='#{uiBean.url("t=tests", uiBean.cat("task=",t.col1))}'>#{t.col2}</a>
+					</h:column>
+					<h:column>
+						<f:facet name="header">STATE</f:facet>
+						#{t.col3}
+					</h:column>
+				</h:dataTable>
+			</h:panelGroup>
+		</h:panelGroup>
+	</h:form>
+</body>
+</html>

@@ -1,0 +1,23 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:x="http://myfaces.apache.org/extensions"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:r="http://richfaces.org/rich"
+	xmlns:t="http://myfaces.apache.org/tomahawk">
+ <body>
+ <h:form>
+ 	<h1>Login</h1>
+ 	<table>
+ 		<tr>
+ 			<td>Username</td><td><h:inputText value="#{uiBean.username}"/></td>
+ 		</tr><tr>
+ 			<td>Password</td><td><h:inputSecret value="#{uiBean.password}"/></td>
+ 		</tr><tr>
+ 			<td></td><td><h:commandButton value="Login" action="#{uiBean.login}"/></td>
+ 		</tr>
+ 	</table>
+ </h:form>
+ </body>
+</html>

@@ -1,0 +1,40 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:x="http://myfaces.apache.org/extensions"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:r="http://richfaces.org/rich"
+	xmlns:t="http://myfaces.apache.org/tomahawk">
+ <body>
+ <h:form>
+ 	<h1>Configuration</h1>
+ 	<h:messages style="color:red;margin:8px;" />
+ 	<table>
+ 		<tr>
+ 			<td>Application Name</td><td><h:inputText value="#{uiBean.appName}"/></td>
+ 		</tr><tr>
+ 			<td>Manifest File</td><td><h:inputText value="#{uiBean.manifestFile}"/> <a href="download.jsf?inject=true&amp;file=#{uiBean.manifestFile}">Download with injected parameters</a></td>
+ 		</tr><tr>
+ 			<td>JMeter Test File</td><td><h:inputText value="#{uiBean.jmeterTestFile}"/> <a href="download.jsf?inject=true&amp;file=#{uiBean.jmeterTestFile}">Download with injected parameters</a></td>
+ 		</tr><tr>
+ 			<td>Trace File(s)</td>
+ 			<td>
+ 			<h:dataTable value="#{uiBean.traceSelection.rows}" var="t">
+				<h:column>
+					<f:facet name="header">Enable</f:facet>
+					<h:selectBooleanCheckbox value="#{t.col2}" />
+				</h:column>
+				<h:column>
+					<f:facet name="header">Trace URL</f:facet>
+					<a href='#{uiBean.url("t=traces",uiBean.cat("trace=",t.col1))}'>#{t.col1}</a>
+				</h:column>
+ 			</h:dataTable>
+ 			</td>
+ 		</tr><tr>
+ 			<td></td><td><h:commandButton value="Start Tests" action="#{uiBean.startTests}"/></td>
+ 		</tr>
+ 	</table>
+ </h:form>
+ </body>
+</html>
