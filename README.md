@@ -11,6 +11,6 @@ $ mvn clean install
 Web Application
 ---------------
 
-To start the Web application, simply type:
+To start the Web application, type:
 
-$ mvn jetty:run
+$ mvn -pl autocles-webapp jetty:run
