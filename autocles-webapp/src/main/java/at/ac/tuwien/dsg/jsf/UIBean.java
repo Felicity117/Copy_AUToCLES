@@ -16,14 +16,13 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
-import java.util.UUID;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import javax.faces.application.FacesMessage;
 import javax.faces.context.FacesContext;
 import javax.servlet.ServletContext;
 import javax.servlet.http.HttpServletResponse;
 
+import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.richfaces.event.UploadEvent;
 import org.richfaces.model.UploadItem;
@@ -53,15 +52,17 @@ public class UIBean {
 
 	private static String HOST = "localhost:8888"; // TODO: make configurable
 
+	/* default values and constants */
 	private static final Util util = new Util();
-	private static final String JOPERA_HOST = "128.130.172.202:8080"; //"128.130.172.220:8080"; // TODO
-	private static final String JOPERA_URL = "http://" + JOPERA_HOST +
-			"/rest/ExperimentAutomation/ExeprimentAutomation/1.2/";
+	private static final Logger logger = Util.getLogger();
+	private static final String JOPERA_HOST = "autocles1.us.to:8080"; // TODO
+	private static final String JOPERA_URL = "http://" + JOPERA_HOST + "/rest/Autocles/Autocles/1.0/";
 	private static final String DATA_FOLDER = "data/";
 	private static final String UPLOAD_FOLDER = DATA_FOLDER + "uploads/";
 	private static final String TRACE_URLS_FILE = DATA_FOLDER + "__trace_urls__.txt";
 	private static final String DOWNLOAD_URL = "http://" + HOST + "/et/download.jsf?file=<file>";
 	private static final String CLOUD_PROXY_URL = "http://weaver.us.to:8891/rest/gateway/download/?url=<url>";
+	private static final String TRACE_GEN_URL = "http://autocles1.us.to:8083/trace?tracespec=<spec>";
 
 	static {
 		PropertyConfigurator.configure(UIBean.class.getResource("/log4j.properties"));
@@ -69,29 +70,33 @@ public class UIBean {
 
 	/* JOpera configs */
 	private String testName = "test";
-	private AtomicInteger testCounter = new AtomicInteger();
-	private String manifestFile = "http://dsg.tuwien.ac.at/staff/hummer/tmp/manifest-jopera.xml";
+	private String joperaUI = "http://" + JOPERA_HOST + "/ui/pages/index.html";
+	private String manifestFile = "http://www.inf.usi.ch/phd/gambi/attachments/autocles/doodle-manifest.xml"; //"http://dsg.tuwien.ac.at/staff/hummer/tmp/manifest-jopera.xml";
 	private String joperaEndpoint = JOPERA_URL;
-	private JOpera jopera = new JOpera(joperaEndpoint);
+	private JOpera jopera = new JOpera(joperaEndpoint, CLOUD_PROXY_URL);
 	/* login information */
 	private String username = "user1";
 	private String password = "pass1";
 	private String userLoggedIn = null; //"user1"; // TODO set to null to enable login!
 	/* test & traces information */
-	private String jmeterTestFile = "http://dsg.tuwien.ac.at/staff/hummer/tmp/DoodleTestplanClients.jmx";
+	private String jmeterTestFile = "http://www.inf.usi.ch/phd/gambi/attachments/autocles/doodle-clients.jmx"; //"http://dsg.tuwien.ac.at/staff/hummer/tmp/DoodleTestplanClients.jmx";
 	private String traceURL = "http://www.inf.usi.ch/phd/gambi/attachments/trace-clients.csv";
 	private DataTableBean traceSelection;
+	private DataTableBean genTraces;
 	/* test instance details */
 	private Process selectedTest;
 	/* Web app related settings */
-	private List<String> tabs = Arrays.asList("start", "traces", "tests", "charts", "results", "settings");
+	private List<String> tabs = Arrays.asList(
+			"start", "traces", "tests", "charts", "results", "settings", "cloud", "jopera");
 	private Map<String,String> tabNames = util.coll.
 			asMap("start", "Start").
 			entry("traces", "Traces").
 			entry("tests", "Tests").
 			entry("charts", "Charts").
 			entry("results", "Results").
-			entry("settings", "Settings");
+			entry("settings", "Settings").
+			entry("cloud", "Cloud").
+			entry("jopera", "JOpera");
 	private static String publicIP = "stockholm.vitalab.tuwien.ac.at"; //Configuration.getPublicIP();
 	private static int webPort = 8895; //8888;
 	private static String webPath = "/et/";
@@ -106,6 +111,7 @@ public class UIBean {
 	private String cloudType;
 	private String accessKey;
 	private String secretKey;
+	private String cloudAdminPage = "http://openstack.infosys.tuwien.ac.at"; // TODO
 
 
 	public boolean isAdminLoggedIn() {
@@ -131,15 +137,21 @@ public class UIBean {
 			traces = traces.substring(0, traces.length() - separator.length());
 		}
 		String body = "customer=" +
-				addSuffix(username) + // TODO temporary fix! remove suffix as soon as backend issue is fixed!
-				// username + 
-				"&service=" + addSuffix(testName) +
+				username +
+				"&service=" + testName +
 				"&testFile=" + util.str.encodeUrl(getDownloadUrl(jmeterTestFile)) +
 				"&manifestFile=" + util.str.encodeUrl(getDownloadUrl(manifestFile)) +
 				"&traceFile=" + traces +
 				"&Action=Run";
 		System.out.println("INFO: Sending request to JOpera: " + body);
 		InvocationResult res = c.invoke(new InvocationRequest(RequestType.HTTP_POST, body));
+
+		// TODO: parse 
+		/* <html>
+<body>
+The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-experiment1327698060878--cb55e97a-a5d9-418d-a9b0-f6621e0cd4fd">http://10.99.0.73:8081/memcached/autocles-experiment1327698060878--cb55e97a-a5d9-418d-a9b0-f6621e0cd4fd</a>
+</body>
+</html> */
 
 		util.xml.print(res.getResultAsElement());
 
@@ -183,28 +195,18 @@ public class UIBean {
 
 	public DataTableBean getTestDetails() {
 		DataTableBean t = new DataTableBean();
-		for(Process p : jopera.getProcesses()) {
-			t.getRows().add(p.getRow());
+		try {
+			for(Process p : jopera.getProcesses()) {
+				t.getRows().add(p.getRow());
+			}	
+		} catch (Exception e) {
+			addMessage("Unable to fetch test details from JOpera.", e);
 		}
 		return t;
 	}
 
 	public void addTrace() throws Exception {
-		String content = "";
-		if(new File(TRACE_URLS_FILE).exists()) {
-			content = util.io.readFile(TRACE_URLS_FILE);
-		}
-		boolean exists = false;
-		for(DataTableBeanRow r : getTraces().getRows()) {
-			if(r.getCol1().toString().trim().equals(traceURL)) {
-				addMessage("Trace file URL already exists: " + traceURL);
-				exists = true;
-			}
-		}
-		if(!exists) {
-			content += "\n" + traceURL;
-		}
-		util.io.saveFile(TRACE_URLS_FILE, content);
+		saveNewTrace(traceURL);
 		traceSelection = null;
 	}
 
@@ -272,32 +274,36 @@ public class UIBean {
 
 	public String getTracesAsJSON(String fileContents) throws Exception {
 		String json = "{\"aaData\":[";
-		json += "{\"name\":\"data_points\", \"data\":[";
-		Map<Integer,Double> dataPoints = new HashMap<Integer,Double>();
-		int increment = 10;
-		for(String entry : fileContents.split("\n")) {
-			String[] parts = entry.split(",");
-			if(parts.length >= 5) {
-				for(int i = Integer.parseInt(parts[1]); 
-						i <= Integer.parseInt(parts[1]) + 
-							Integer.parseInt(parts[3]); i += increment) {
-					if(!dataPoints.containsKey(i)) {
-						dataPoints.put(i, 0.0);
-					}
-					dataPoints.put(i, dataPoints.get(i) + 1);
-				}
+		Map<String,Map<Integer,Double>> dataPoints = new HashMap<String,Map<Integer,Double>>();
+		String[] lines = fileContents.split("\n");
+		String[] header = lines[0].split(",");
+		String[] values = Arrays.asList(lines).subList(1, lines.length).toArray(new String[0]);
+		int numClients = header.length - 1;
+		for(int j = 1; j <= numClients; j ++) {
+			String client = header[j];
+			dataPoints.put(client, new HashMap<Integer, Double>());
+			for(String entry : values) {
+				String[] parts = entry.split(",");
+				dataPoints.get(client).put(Integer.parseInt(parts[0]), 
+						Double.parseDouble(parts[j]));
 			}
 		}
-		//System.out.println("Data points: " + dataPoints);
-		List<Integer> points = new LinkedList<Integer>(dataPoints.keySet());
-		Collections.sort(points);
-		for(int i : points) {
-			json += "{\"x\":" + i + ",\"y\":" + dataPoints.get(i) + "},";
+		
+		for(String client : dataPoints.keySet()) {
+			json += "{\"name\":\"" + client + "\", \"data\":[";
+			List<Integer> points = new LinkedList<Integer>(dataPoints.get(client).keySet());
+			Collections.sort(points);
+			for(int i : points) {
+				json += "{\"x\":" + i + ",\"y\":" + dataPoints.get(client).get(i) + "},";
+			}
+			if(json.endsWith(",")) {
+				json = json.substring(0, json.length() - 1);
+			}
+			json += "]},";
 		}
 		if(json.endsWith(",")) {
 			json = json.substring(0, json.length() - 1);
 		}
-		json += "]}";
 		json += "]}";
 		return json;
 	}
@@ -345,7 +351,12 @@ public class UIBean {
 			if(!util.str.isEmpty(proxy)) {
 				fileURL = proxy.replace("<url>", util.str.encodeUrl(fileURL));
 			}
-			content = new URL(fileURL).openStream();
+			try {
+				content = new URL(fileURL).openStream();
+			} catch (Exception e) {
+				logger.warn("Cannot retrieve contents from URL: " + fileURL);
+				return null;
+			}
 			//response.setHeader("Content-Disposition", "attachment;filename=" + displayName);
 		}
 		//System.out.println("Continuing to download file (2) " + fileURL);
@@ -402,7 +413,7 @@ public class UIBean {
 						}
 				}, 1);
 			}
-			System.out.println("Setting response length for output: " + contentString.length());
+			//System.out.println("Setting response length for output: " + contentString.length());
 			response.setContentLength(contentString.length());
 			content = new ByteArrayInputStream(contentString.getBytes());
 		}
@@ -419,8 +430,6 @@ public class UIBean {
 	}
 
 	public void saveSettings() {
-//		String sk = "ch.usi.cloud.controller.eucalyptus.secretKey";
-//		String ak = "ch.usi.cloud.controller.eucalyptus.accessKey";
 		System.out.println("Selected cloud type: " + cloudType);
 		try {
 			JSch ssh = new JSch();
@@ -584,18 +593,57 @@ public class UIBean {
 		return result;
 	}
 
+	public void genTraceAddClient() {
+		if(genTraces == null) {
+			genTraces = new DataTableBean();
+		}
+		genTraces.addRow(new DataTableBeanRow("Client " + (genTraces.getRows().size() + 1),
+				"sine", "10,0.01,10,0"));
+	}
+	public void genTraceReset() {
+		genTraces = new DataTableBean();
+	}
+	public void genTraceSave() {
+		 String spec = "120:"; // TODO user-input
+		 for(int i = 0; i < genTraces.getRows().size(); i ++) {
+			 DataTableBeanRow row = genTraces.getRows().get(i);
+			 spec += "client" + (i+1) + "," +
+			 		row.getCol2() + "," + row.getCol3() + ";";
+		 }
+		 String url = TRACE_GEN_URL.replace("<spec>", spec);
+		 try {
+			saveNewTrace(url);
+		} catch (Exception e) {
+			addMessage("Unable to save trace URLs.", e);
+		}
+	}
+	
 	/* UTILITY METHODS */
+
+	private void saveNewTrace(String url) throws Exception {
+		String content = "";
+		if(new File(TRACE_URLS_FILE).exists()) {
+			content = util.io.readFile(TRACE_URLS_FILE);
+		}
+		boolean exists = false;
+		for(DataTableBeanRow r : getTraces().getRows()) {
+			if(r.getCol1().toString().trim().equals(url)) {
+				addMessage("Trace file URL already exists: " + url);
+				exists = true;
+			}
+		}
+		if(!exists) {
+			content += "\n" + url;
+		}
+		util.io.saveFile(TRACE_URLS_FILE, content);
+	}
 
 	public boolean isEmpty(String s) {
 		return util.str.isEmpty(s);
 	}
-	public String getTestNameSuffix() {
-		return util.str.hex(UUID.randomUUID().
-				getLeastSignificantBits() & 0xffff) + testCounter.incrementAndGet();
-	}
-	private String addSuffix(String testName) {
-		testName += "_" + getTestNameSuffix();
-		return testName;
+
+	public String gsub(String haystack, String needle, String replacement) {
+		return haystack.replace(needle, replacement);
 	}
 
 	public String url(String p1) {
@@ -619,8 +667,9 @@ public class UIBean {
 
 		for(String o : paramOverrides) {
 			if(o.split("=").length >= 2) {
-				String key = o.split("=")[0].trim();
-				String value = o.split("=")[1].trim();
+				int index = o.indexOf("=");
+				String key = o.substring(0, index).trim();
+				String value = o.substring(index + 1).trim();
 				s.set(key, value);
 			} else {
 				System.out.println("WARN: Unable to parse parameter override: " + o);
@@ -659,11 +708,19 @@ public class UIBean {
 		return result.toString();
 	}
 	public String catURLs(String url1, String url2) {
-		return util.str.concatURLs(url1, url2);
+		try {
+			return util.str.concatURLs(url1, url2);
+		} catch (Exception e) {
+			addMessage("WARN: Invalid URL data, please return to the overview page.");
+			return null;
+		}
 	}
 
 	/* GETTERS/SETTERS */
 
+	public DataTableBean getGenTraces() {
+		return genTraces;
+	}
 	public String getCloudType() {
 		return cloudType;
 	}
@@ -752,5 +809,48 @@ public class UIBean {
 	public void setManifestFile(String manifestFile) {
 		this.manifestFile = manifestFile;
 	}
+	public String getCloudAdminPage() {
+		return cloudAdminPage;
+	}
+	public String getJoperaUI() {
+		return joperaUI;
+	}
+
+	
+	
+
+	/* TODO: remove */
+//	public String getTracesAsJSON_old(String fileContents) throws Exception {
+//		System.out.println("getTracesAsJSON: '" + fileContents + "'");
+//		String json = "{\"aaData\":[";
+//		json += "{\"name\":\"data_points\", \"data\":[";
+//		Map<Integer,Double> dataPoints = new HashMap<Integer,Double>();
+//		int increment = 10;
+//		for(String entry : fileContents.split("\n")) {
+//			String[] parts = entry.split(",");
+//			if(parts.length >= 5) {
+//				for(int i = Integer.parseInt(parts[1]); 
+//						i <= Integer.parseInt(parts[1]) + 
+//							Integer.parseInt(parts[3]); i += increment) {
+//					if(!dataPoints.containsKey(i)) {
+//						dataPoints.put(i, 0.0);
+//					}
+//					dataPoints.put(i, dataPoints.get(i) + 1);
+//				}
+//			}
+//		}
+//		//System.out.println("Data points: " + dataPoints);
+//		List<Integer> points = new LinkedList<Integer>(dataPoints.keySet());
+//		Collections.sort(points);
+//		for(int i : points) {
+//			json += "{\"x\":" + i + ",\"y\":" + dataPoints.get(i) + "},";
+//		}
+//		if(json.endsWith(",")) {
+//			json = json.substring(0, json.length() - 1);
+//		}
+//		json += "]}";
+//		json += "]}";
+//		return json;
+//	}
 
 }

@@ -29,8 +29,7 @@ public class JOpera {
 	private final AtomicLong lastUpdateTime = new AtomicLong();
 	private static final long MAX_UPDATE_INTERVAL_MS = 10*1000;
 	private LinkedList<Process> cachedProcesses;
-	private ProxyResolver proxyResolver;
-
+	private ProxyResolver proxyResolver = new ProxyResolver.EmptyProxyResolver();
 
 	public static class Process {
 		public String id;
@@ -157,10 +156,18 @@ public class JOpera {
 	}
 
 	public JOpera(String endpointURL) {
+		this(endpointURL, null);
+	}
+	public JOpera(String endpointURL, String proxyUrl) {
 		while(endpointURL.endsWith("/")) {
 			endpointURL = endpointURL.substring(0, endpointURL.length() - 1);
 		}
 		this.endpointURL = endpointURL;
+		if(proxyUrl == null) {
+			this.proxyResolver = new ProxyResolver.EmptyProxyResolver();
+		} else {
+			this.proxyResolver = new ProxyResolver.DefaultProxyResolver(proxyUrl);
+		}
 	}
 
 	public synchronized List<Process> getProcesses() {
@@ -199,7 +206,7 @@ public class JOpera {
 						}
 					}
 					Element statusPayload = util.xml.toElement(
-							i.task("RespondToClient").box("SystemInput").param("Payload"));
+							i.task("StoreUserAnwserInMemcached").box("SystemInput").param("body"));
 					//util.xml.print(statusPayload);
 					i.serviceFeed = XPathProcessor.evaluate("descendant::service/live-feed/text()", statusPayload);
 					i.controllerFeed = XPathProcessor.evaluate("descendant::controller/live-feed/text()", statusPayload);
@@ -274,4 +281,12 @@ public class JOpera {
 		}
 	}
 
+	/* getters/setters */
+
+	public ProxyResolver getProxyResolver() {
+		return proxyResolver;
+	}
+	public void setProxyResolver(ProxyResolver proxyResolver) {
+		this.proxyResolver = proxyResolver;
+	}
 }

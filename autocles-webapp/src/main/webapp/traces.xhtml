@@ -14,7 +14,7 @@
  	<h:dataTable value="#{uiBean.traces.rows}" var="t">
 		<h:column>
 			<f:facet name="header">URL</f:facet>
-			<a href='#{uiBean.url("t=traces",uiBean.cat("trace=",t.col1))}'>#{t.col1}</a>
+			<a href='#{uiBean.url("t=traces",uiBean.cat("trace=",uiBean.gsub(t.col1, "=", "%3D")))}'>#{t.col1}</a>
 		</h:column>
 		<h:column>
 			<f:facet name="header">Trace Length</f:facet>
@@ -34,11 +34,35 @@
 	<h2>Add Trace URL</h2>
  	<table>
  		<tr>
- 			<td>Trace URL</td><td><h:inputText value="#{uiBean.traceURL}"/></td>
+ 			<td>Trace URL</td><td><h:inputText value="#{uiBean.traceURL}" style="width: 200px;"/></td>
  		</tr><tr>
  			<td></td><td><h:commandButton value="Save" action="#{uiBean.addTrace}"/></td>
  		</tr>
  	</table>
+	<h2>Generate Trace</h2>
+	<h:dataTable value="#{uiBean.genTraces.rows}" var="t">
+		<ui:param name="testAttr" value='#{uiBean.cat("test=",t.col1)}' />
+		<h:column>
+			<f:facet name="header">Client</f:facet>
+			#{t.col1}
+		</h:column>
+		<h:column>
+			<f:facet name="header">Type</f:facet>
+			<h:selectOneMenu value="#{t.col2}">
+			   	<f:selectItem itemValue="sine" itemLabel="Sine Curve" />
+			   	<f:selectItem itemValue="square" itemLabel="Square Curve" />
+			   	<f:selectItem itemValue="triangle" itemLabel="Triangle Curve" />
+			   	<f:selectItem itemValue="sawtooth" itemLabel="Sawtooth Curve" />
+			</h:selectOneMenu>
+		</h:column>
+		<h:column>
+			<f:facet name="header">Parameters</f:facet>
+			<h:inputText value="#{t.col3}" style="width: 200px;"/>
+		</h:column>
+	</h:dataTable>
+	<h:commandButton value="Reset Clients" action="#{uiBean.genTraceReset}"/>
+	<h:commandButton value="Add Client" action="#{uiBean.genTraceAddClient}"/>
+	<h:commandButton value="Save Trace" action="#{uiBean.genTraceSave}"/>
  	<h2>Upload Trace Files</h2>
  	<r:fileUpload fileUploadListener="#{uiBean.uploadFile}">
  			<!-- uploadData="#{uiBean.uploadData}" -->

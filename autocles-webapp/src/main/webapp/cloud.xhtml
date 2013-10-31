@@ -8,16 +8,11 @@
 	xmlns:t="http://myfaces.apache.org/tomahawk">
  <body>
  <h:form>
- 	<h1>Login</h1>
- 	<table>
- 		<tr>
- 			<td>Username</td><td><h:inputText value="#{uiBean.username}"/></td>
- 		</tr><tr>
- 			<td>Password</td><td><h:inputSecret value="#{uiBean.password}"/></td>
- 		</tr><tr>
- 			<td></td><td><h:commandButton value="Login" action="#{uiBean.login}"/></td>
- 		</tr>
- 	</table>
+ 	<h1>Cloud Administration</h1>
+ 	<h:messages style="color:red;margin:8px;" />
+
+	<iframe src="#{uiBean.cloudAdminPage}" style="width: 100%; height: 600px;">
+	</iframe>
  </h:form>
  </body>
 </html>
