@@ -14,6 +14,7 @@ import org.w3c.dom.Element;
 
 import at.ac.tuwien.dsg.util.ProxyResolver;
 import at.ac.tuwien.infosys.aggr.xml.XPathProcessor;
+import at.ac.tuwien.infosys.util.Configuration;
 import at.ac.tuwien.infosys.util.Util;
 import at.ac.tuwien.infosys.util.jsf.DataTableBean.DataTableBeanRow;
 import at.ac.tuwien.infosys.ws.EndpointReference;
@@ -25,7 +26,7 @@ public class JOpera {
 
 	private static final Util util = new Util();
 
-	private String endpointURL = "http://128.130.172.220:8080/rest/ExperimentAutomation/ExeprimentAutomation/1.1";
+	private String endpointURL = Configuration.getValue("jopera.endpoint.url");
 	private final AtomicLong lastUpdateTime = new AtomicLong();
 	private static final long MAX_UPDATE_INTERVAL_MS = 10*1000;
 	private LinkedList<Process> cachedProcesses;

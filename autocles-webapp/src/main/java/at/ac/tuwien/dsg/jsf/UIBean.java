@@ -29,6 +29,7 @@ import org.richfaces.model.UploadItem;
 
 import at.ac.tuwien.dsg.jopera.JOpera;
 import at.ac.tuwien.dsg.jopera.JOpera.Process;
+import at.ac.tuwien.infosys.util.Configuration;
 import at.ac.tuwien.infosys.util.Util;
 import at.ac.tuwien.infosys.util.io.InputOutputStreamBuffer;
 import at.ac.tuwien.infosys.util.jsf.DataTableBean;
@@ -50,18 +51,18 @@ import com.jcraft.jsch.Session;
  */
 public class UIBean {
 
-	private static String HOST = "localhost:8888"; // TODO: make configurable
+	private static String HOST = Configuration.getValue("autocles.webapp.host");
 
 	/* default values and constants */
 	private static final Util util = new Util();
 	private static final Logger logger = Util.getLogger();
-	private static final String JOPERA_HOST = "autocles1.us.to:8080"; // TODO
-	private static final String JOPERA_URL = "http://" + JOPERA_HOST + "/rest/Autocles/Autocles/1.0/";
+	private static final String JOPERA_HOST = Configuration.getValue("jopera.host");
+	private static final String JOPERA_URL = Configuration.getValue("jopera.endpoint.url");
 	private static final String DATA_FOLDER = "data/";
 	private static final String UPLOAD_FOLDER = DATA_FOLDER + "uploads/";
 	private static final String TRACE_URLS_FILE = DATA_FOLDER + "__trace_urls__.txt";
 	private static final String DOWNLOAD_URL = "http://" + HOST + "/et/download.jsf?file=<file>";
-	private static final String CLOUD_PROXY_URL = "http://weaver.us.to:8891/rest/gateway/download/?url=<url>";
+	private static final String CLOUD_PROXY_URL = Configuration.getValue("cloud.proxy.url");
 	private static final String TRACE_GEN_URL = "http://autocles1.us.to:8083/trace?tracespec=<spec>";
 
 	static {
@@ -71,16 +72,16 @@ public class UIBean {
 	/* JOpera configs */
 	private String testName = "test";
 	private String joperaUI = "http://" + JOPERA_HOST + "/ui/pages/index.html";
-	private String manifestFile = "http://www.inf.usi.ch/phd/gambi/attachments/autocles/doodle-manifest.xml"; //"http://dsg.tuwien.ac.at/staff/hummer/tmp/manifest-jopera.xml";
+	private String manifestFile = Configuration.getValue("default.jopera.manifestfile");
 	private String joperaEndpoint = JOPERA_URL;
 	private JOpera jopera = new JOpera(joperaEndpoint, CLOUD_PROXY_URL);
 	/* login information */
 	private String username = "user1";
 	private String password = "pass1";
-	private String userLoggedIn = null; //"user1"; // TODO set to null to enable login!
+	private String userLoggedIn = null; /* set to null to enable login! */
 	/* test & traces information */
-	private String jmeterTestFile = "http://www.inf.usi.ch/phd/gambi/attachments/autocles/doodle-clients.jmx"; //"http://dsg.tuwien.ac.at/staff/hummer/tmp/DoodleTestplanClients.jmx";
-	private String traceURL = "http://www.inf.usi.ch/phd/gambi/attachments/trace-clients.csv";
+	private String jmeterTestFile = Configuration.getValue("default.jmeter.testfile");
+	private String traceURL = Configuration.getValue("default.traces.url");
 	private DataTableBean traceSelection;
 	private DataTableBean genTraces;
 	/* test instance details */
@@ -97,8 +98,9 @@ public class UIBean {
 			entry("settings", "Settings").
 			entry("cloud", "Cloud").
 			entry("jopera", "JOpera");
-	private static String publicIP = "stockholm.vitalab.tuwien.ac.at"; //Configuration.getPublicIP();
-	private static int webPort = 8895; //8888;
+	private static String publicIP = Configuration.getPublicIP() != null ? 
+			Configuration.getPublicIP() : "localhost";
+	private static int webPort = 8888;
 	private static String webPath = "/et/";
 	/* parameter configurations */
 	private String paramValue;
@@ -111,7 +113,7 @@ public class UIBean {
 	private String cloudType;
 	private String accessKey;
 	private String secretKey;
-	private String cloudAdminPage = "http://openstack.infosys.tuwien.ac.at"; // TODO
+	private String cloudAdminPage = Configuration.getValue("cloud.admin.url");
 
 
 	public boolean isAdminLoggedIn() {
@@ -136,8 +138,7 @@ public class UIBean {
 		if(traces.endsWith(" , ")) {
 			traces = traces.substring(0, traces.length() - separator.length());
 		}
-		String body = "customer=" +
-				username +
+		String body = "customer=" + username +
 				"&service=" + testName +
 				"&testFile=" + util.str.encodeUrl(getDownloadUrl(jmeterTestFile)) +
 				"&manifestFile=" + util.str.encodeUrl(getDownloadUrl(manifestFile)) +
@@ -177,7 +178,7 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 		// TODO: read experiment ID to read data from memcached
 		
 		// TODO: 
-		
+
 		/* features:
 		 * - running 1 trace
 		 * - generating traces
@@ -185,7 +186,7 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 		 * - showing the queue in the GUI
 		 * - as soon as results arrive, show results for queue entries
 		*/
-		
+
 		addMessage("Test successfully started.");
 	}
 
@@ -815,42 +816,5 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 	public String getJoperaUI() {
 		return joperaUI;
 	}
-
-	
-	
-
-	/* TODO: remove */
-//	public String getTracesAsJSON_old(String fileContents) throws Exception {
-//		System.out.println("getTracesAsJSON: '" + fileContents + "'");
-//		String json = "{\"aaData\":[";
-//		json += "{\"name\":\"data_points\", \"data\":[";
-//		Map<Integer,Double> dataPoints = new HashMap<Integer,Double>();
-//		int increment = 10;
-//		for(String entry : fileContents.split("\n")) {
-//			String[] parts = entry.split(",");
-//			if(parts.length >= 5) {
-//				for(int i = Integer.parseInt(parts[1]); 
-//						i <= Integer.parseInt(parts[1]) + 
-//							Integer.parseInt(parts[3]); i += increment) {
-//					if(!dataPoints.containsKey(i)) {
-//						dataPoints.put(i, 0.0);
-//					}
-//					dataPoints.put(i, dataPoints.get(i) + 1);
-//				}
-//			}
-//		}
-//		//System.out.println("Data points: " + dataPoints);
-//		List<Integer> points = new LinkedList<Integer>(dataPoints.keySet());
-//		Collections.sort(points);
-//		for(int i : points) {
-//			json += "{\"x\":" + i + ",\"y\":" + dataPoints.get(i) + "},";
-//		}
-//		if(json.endsWith(",")) {
-//			json = json.substring(0, json.length() - 1);
-//		}
-//		json += "]}";
-//		json += "]}";
-//		return json;
-//	}
 
 }
