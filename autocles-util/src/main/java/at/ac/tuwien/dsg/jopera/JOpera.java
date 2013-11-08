@@ -9,9 +9,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.log4j.Logger;
 import org.jopera.kernel.State;
 import org.w3c.dom.Element;
 
+import at.ac.tuwien.dsg.test.TestRequest.TestRequests;
 import at.ac.tuwien.dsg.util.ProxyResolver;
 import at.ac.tuwien.infosys.aggr.xml.XPathProcessor;
 import at.ac.tuwien.infosys.util.Configuration;
@@ -31,6 +33,7 @@ public class JOpera {
 	private static final long MAX_UPDATE_INTERVAL_MS = 10*1000;
 	private LinkedList<Process> cachedProcesses;
 	private ProxyResolver proxyResolver = new ProxyResolver.EmptyProxyResolver();
+	private static final Logger logger = Util.getLogger();
 
 	public static class Process {
 		public String id;
@@ -68,6 +71,7 @@ public class JOpera {
 		public String clientResults;
 		public String serviceResults;
 		public String controllerResults;
+		public TestRequests requests;
 
 		public List<DataTableBeanRow> getRows() {
 			List<DataTableBeanRow> rows = new LinkedList<DataTableBeanRow>();
@@ -89,7 +93,9 @@ public class JOpera {
 		public DataTableBeanRow getRow() {
 			return new DataTableBeanRow(name, 
 					getNumTasks(), serviceFeed, controllerFeed,
-					clientResults, serviceResults, controllerResults);
+					clientResults, serviceResults, controllerResults,
+					requests == null ? "-" : requests.requests.size(),
+					requests == null ? "-" : util.str.format(requests.getSuccessRatio() * 100.0, 2) + "%");
 		}
 		public Task task(String name) {
 			for(Task t : tasks) {
@@ -157,18 +163,19 @@ public class JOpera {
 	}
 
 	public JOpera(String endpointURL) {
-		this(endpointURL, null);
+		this(endpointURL, (String)null);
 	}
 	public JOpera(String endpointURL, String proxyUrl) {
+		this(endpointURL, proxyUrl == null ? 
+				new ProxyResolver.EmptyProxyResolver() :
+				new ProxyResolver.DefaultProxyResolver(proxyUrl));
+	}
+	public JOpera(String endpointURL, ProxyResolver proxy) {
 		while(endpointURL.endsWith("/")) {
 			endpointURL = endpointURL.substring(0, endpointURL.length() - 1);
 		}
 		this.endpointURL = endpointURL;
-		if(proxyUrl == null) {
-			this.proxyResolver = new ProxyResolver.EmptyProxyResolver();
-		} else {
-			this.proxyResolver = new ProxyResolver.DefaultProxyResolver(proxyUrl);
-		}
+		this.proxyResolver = proxy;
 	}
 
 	public synchronized List<Process> getProcesses() {
@@ -206,48 +213,61 @@ public class JOpera {
 							}
 						}
 					}
-					Element statusPayload = util.xml.toElement(
-							i.task("StoreUserAnwserInMemcached").box("SystemInput").param("body"));
-					//util.xml.print(statusPayload);
-					i.serviceFeed = XPathProcessor.evaluate("descendant::service/live-feed/text()", statusPayload);
-					i.controllerFeed = XPathProcessor.evaluate("descendant::controller/live-feed/text()", statusPayload);
-					i.clientResults = XPathProcessor.evaluate("descendant::client/results/text()", statusPayload);
-					i.serviceResults = XPathProcessor.evaluate("descendant::service/results/text()", statusPayload);
-					i.controllerResults = XPathProcessor.evaluate("descendant::controller/results/text()", statusPayload);
-					// convert to proxy URLs
-					i.serviceFeed = proxyResolver.getProxyUrl(i.serviceFeed);
-					i.controllerFeed = proxyResolver.getProxyUrl(i.controllerFeed);
-					i.clientResults = proxyResolver.getProxyUrl(i.clientResults);
-					i.serviceResults = proxyResolver.getProxyUrl(i.serviceResults);
-					i.controllerResults = proxyResolver.getProxyUrl(i.controllerResults);
-					System.out.println(" > " + i.serviceFeed);
-					System.out.println(" > " + i.controllerFeed);
-					// retrieve XML documents
-					i.serviceFeed = util.io.readFile(i.serviceFeed);
-					i.controllerFeed = util.io.readFile(i.controllerFeed);
-					//System.out.println("i.clientResults size: " + util.net.getDownloadSize(UIBean.getProxyUrl(i.clientResults)));
-					//System.out.println("i.serviceResults size: " + util.net.getDownloadSize(UIBean.getProxyUrl(i.serviceResults)));
-					//System.out.println("i.controllerResults size: " + util.net.getDownloadSize(UIBean.getProxyUrl(i.controllerResults)));
-					//System.out.println(" -> " + i.serviceFeed);
-					//System.out.println(" -> " + i.controllerFeed);
-					// parse host and port from XML
-					if(!util.str.isEmpty(i.serviceFeed)) {
-						i.serviceFeed = String.format("http://%s:%s/chartForm", 
-							XPathProcessor.evaluate("//ip/text()", util.xml.toElement(i.serviceFeed)),
-							XPathProcessor.evaluate("//port/text()", util.xml.toElement(i.serviceFeed)));
+					try {
+
+						Task t = i.task("StoreUserAnwserInMemcached");
+						if(t == null) continue;
+						Box b = t.box("SystemInput");
+						if(b == null || b.param("body") == null) continue;
+
+						Element statusPayload = util.xml.toElement(b.param("body"));
+						i.serviceFeed = XPathProcessor.evaluate("descendant::service/live-feed/text()", statusPayload);
+						i.controllerFeed = XPathProcessor.evaluate("descendant::controller/live-feed/text()", statusPayload);
+						i.clientResults = XPathProcessor.evaluate("descendant::client/results/text()", statusPayload);
+						i.serviceResults = XPathProcessor.evaluate("descendant::service/results/text()", statusPayload);
+						i.controllerResults = XPathProcessor.evaluate("descendant::controller/results/text()", statusPayload);
+						// convert to proxy URLs
+						i.serviceFeed = proxyResolver.getProxyUrl(i.serviceFeed);
+						i.controllerFeed = proxyResolver.getProxyUrl(i.controllerFeed);
+						i.clientResults = proxyResolver.getProxyUrl(i.clientResults);
+						i.serviceResults = proxyResolver.getProxyUrl(i.serviceResults);
+						i.controllerResults = proxyResolver.getProxyUrl(i.controllerResults);
+						System.out.println(" > " + i.serviceFeed);
+						System.out.println(" > " + i.controllerFeed);
+						// retrieve XML documents
+						i.serviceFeed = util.io.readFile(i.serviceFeed);
+						i.controllerFeed = util.io.readFile(i.controllerFeed);
+						//System.out.println("i.clientResults size: " + util.net.getDownloadSize(UIBean.getProxyUrl(i.clientResults)));
+						//System.out.println("i.serviceResults size: " + util.net.getDownloadSize(UIBean.getProxyUrl(i.serviceResults)));
+						//System.out.println("i.controllerResults size: " + util.net.getDownloadSize(UIBean.getProxyUrl(i.controllerResults)));
+						//System.out.println(" -> " + i.serviceFeed);
+						//System.out.println(" -> " + i.controllerFeed);
+						/* parse host and port from XML */
+						if(!util.str.isEmpty(i.serviceFeed)) {
+							i.serviceFeed = String.format("http://%s:%s/chartForm", 
+								XPathProcessor.evaluate("//ip/text()", util.xml.toElement(i.serviceFeed)),
+								XPathProcessor.evaluate("//port/text()", util.xml.toElement(i.serviceFeed)));
+						}
+						/* parse host and port from XML */
+						if(!util.str.isEmpty(i.controllerFeed)) {
+							i.controllerFeed = String.format("http://%s:%s/chartForm", 
+								XPathProcessor.evaluate("//ip/text()", util.xml.toElement(i.controllerFeed)),
+								XPathProcessor.evaluate("//port/text()", util.xml.toElement(i.controllerFeed)));
+						}
+						/* parse client request results */
+						if(!util.str.isEmpty(i.clientResults)) {
+							i.requests = TestRequests.parse(i.clientResults);
+						}
+					} catch (Exception e) {
+						logger.warn("Cannot get details of test instance '" + i.name + "'");
 					}
-					// parse host and port from XML
-					if(!util.str.isEmpty(i.controllerFeed)) {
-						i.controllerFeed = String.format("http://%s:%s/chartForm", 
-							XPathProcessor.evaluate("//ip/text()", util.xml.toElement(i.controllerFeed)),
-							XPathProcessor.evaluate("//port/text()", util.xml.toElement(i.controllerFeed)));
-					}
-					//System.out.println(" --> " + i.serviceFeed);
-					//System.out.println(" --> " + i.controllerFeed);
 				}
 				cachedProcesses.add(p);
 			}
 			lastUpdateTime.set(System.currentTimeMillis());
+			if(cachedProcesses.isEmpty()) {
+				logger.warn("Found 0 processes in file: " + path);
+			}
 			return cachedProcesses;
 		} catch (Exception e) {
 			throw new RuntimeException(e);

@@ -9,7 +9,7 @@
 <body>
 	<h:form>
 		<h1>Tests</h1>
- 		<h:messages style="color:red;margin:8px;" />
+ 		<h:messages style="color:red; margin:8px;" />
 		<h:dataTable value="#{uiBean.testDetails.rows}" var="t">
 			<ui:param name="testAttr" value='#{uiBean.cat("test=",t.col1)}' />
 			<h:column>
@@ -26,6 +26,7 @@
 			</h:column>
 		</h:dataTable>
 		<ui:param name="testParam" value='#{uiBean.param("test")}' />
+		<h:outputText value='' rendered="#{uiBean.jmeterUrlToOpen} != null"/>
 		<h:panelGroup rendered='#{testParam != null}'>
 			<h2>Instances for Test #{testParam}</h2>
 			<h:dataTable value="#{uiBean.selectedTest.rows}" var="i">
@@ -39,7 +40,15 @@
 					#{i.col2}
 				</h:column>
 				<h:column>
-					<f:facet name="header">Links</f:facet>
+					<f:facet name="header">Test Requests</f:facet>
+					#{i.col8}
+				</h:column>
+				<h:column>
+					<f:facet name="header">Success Ratio</f:facet>
+					#{i.col9}
+				</h:column>
+				<h:column>
+					<f:facet name="header">Live Feed</f:facet>
 <!-- 					<a href="#{uiBean.getProxyUrl(i.col3)}">Service Live Feeds</a><br/> -->
 					<h:panelGroup rendered="#{!uiBean.isEmpty(i.col3)}">
 						<a href='#{uiBean.url("t=charts", instAttr)}'>Live Feeds</a>
@@ -52,7 +61,8 @@
 					<f:facet name="header">Client Results</f:facet>
 					<h:panelGroup rendered="#{!uiBean.isEmpty(i.col5)}">
 						<a href='#{i.col5}&amp;attachment=jtl' target="_blank">Download Results</a><br/>
-						<a href='#{uiBean.url("t=results", "results=clients", instAttr)}'>See Results</a>
+						<a href='#{uiBean.url("t=results", "results=clients", instAttr)}'>See Results</a><br/>
+						<!-- <a href='#{uiBean.url("t=tests", uiBean.cat("jmeterFileURL=", i.col5))}'>Open with JMeter</a>-->
 					</h:panelGroup>
 					<h:panelGroup rendered="#{uiBean.isEmpty(i.col5)}">
 						No Results Available

@@ -26,9 +26,14 @@ import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.richfaces.event.UploadEvent;
 import org.richfaces.model.UploadItem;
+import org.w3c.dom.Element;
 
 import at.ac.tuwien.dsg.jopera.JOpera;
 import at.ac.tuwien.dsg.jopera.JOpera.Process;
+import at.ac.tuwien.dsg.test.TestRequest;
+import at.ac.tuwien.dsg.test.TestRequest.TestRequests;
+import at.ac.tuwien.dsg.util.ProxyResolver;
+import at.ac.tuwien.infosys.aggr.xml.XPathProcessor;
 import at.ac.tuwien.infosys.util.Configuration;
 import at.ac.tuwien.infosys.util.Util;
 import at.ac.tuwien.infosys.util.io.InputOutputStreamBuffer;
@@ -63,20 +68,23 @@ public class UIBean {
 	private static final String TRACE_URLS_FILE = DATA_FOLDER + "__trace_urls__.txt";
 	private static final String DOWNLOAD_URL = "http://" + HOST + "/et/download.jsf?file=<file>";
 	private static final String CLOUD_PROXY_URL = Configuration.getValue("cloud.proxy.url");
-	private static final String TRACE_GEN_URL = "http://autocles1.us.to:8083/trace?tracespec=<spec>";
+	private static final String TRACE_GEN_URL = Configuration.getValue("autocles.tracegen.url");
 
 	static {
 		PropertyConfigurator.configure(UIBean.class.getResource("/log4j.properties"));
 	}
 
+	/* configuration for proxying/Cloud access */
+	private ProxyResolver proxyResolver = new ProxyResolver.DefaultProxyResolver(CLOUD_PROXY_URL);
 	/* JOpera configs */
 	private String testName = "test";
 	private String joperaUI = "http://" + JOPERA_HOST + "/ui/pages/index.html";
 	private String manifestFile = Configuration.getValue("default.jopera.manifestfile");
 	private String joperaEndpoint = JOPERA_URL;
-	private JOpera jopera = new JOpera(joperaEndpoint, CLOUD_PROXY_URL);
+	private JOpera jopera = new JOpera(joperaEndpoint, proxyResolver);
+	private String memcachedHost = Configuration.getValue("memcached.host");
 	/* login information */
-	private String username = "user1";
+	private String username = "demoUser";
 	private String password = "pass1";
 	private String userLoggedIn = null; /* set to null to enable login! */
 	/* test & traces information */
@@ -84,6 +92,7 @@ public class UIBean {
 	private String traceURL = Configuration.getValue("default.traces.url");
 	private DataTableBean traceSelection;
 	private DataTableBean genTraces;
+	private String traceLength = "120";
 	/* test instance details */
 	private Process selectedTest;
 	/* Web app related settings */
@@ -106,15 +115,27 @@ public class UIBean {
 	private String paramValue;
 	private String paramKey;
 	private Map<String, String> configParameters = util.coll.
-			asMap("BASE_EMI", "ami-00000149").
-			entry("INSTANCE_TYPE", "m1.medium").
-			entry("SECURITY_GROUP", "default");
+			asMap("BASE_EMI", Configuration.getValue("default.cloud.imageID")).
+			entry("INSTANCE_TYPE", Configuration.getValue("default.cloud.flavor")).
+			entry("SECURITY_GROUP", Configuration.getValue("default.cloud.securityGroup"));
 	/* Cloud configuration */
 	private String cloudType;
 	private String accessKey;
 	private String secretKey;
 	private String cloudAdminPage = Configuration.getValue("cloud.admin.url");
 
+	/**
+	 * Default constructor.
+	 */
+	public UIBean() {
+//		proxyResolver = new ProxyResolver() {
+//			public String getProxyUrl(String url) {
+//				return url.contains("/memcached/") ? 
+//						util.net.replaceHost(url, memcachedHost).toString() : 
+//						util.net.replaceHost(url, JOPERA_HOST).toString();
+//			}
+//		};
+	}
 
 	public boolean isAdminLoggedIn() {
 		return false; // TODO
@@ -123,71 +144,86 @@ public class UIBean {
 		return userLoggedIn != null; // TODO
 	}
 
-	public void startTests() throws MalformedURLException, Exception {
+	public void startTests() {
 
-		WebServiceClient c = WebServiceClient.getClient(
-				new EndpointReference(new URL(JOPERA_URL)));
-
-		String traces = "";
-		String separator = " , ";
-		for(DataTableBeanRow row : traceSelection.getRows()) {
-			if((Boolean)row.getCol2()) {
-				traces += row.getCol1() + separator;
+		try {
+			WebServiceClient c = WebServiceClient.getClient(
+					new EndpointReference(new URL(JOPERA_URL)));
+	
+			String traces = "";
+			String separator = " , ";
+			for(DataTableBeanRow row : traceSelection.getRows()) {
+				if((Boolean)row.getCol2()) {
+					traces += row.getCol1() + separator;
+				}
 			}
+			if(traces.endsWith(" , ")) {
+				traces = traces.substring(0, traces.length() - separator.length());
+			}
+			String body = "customer=" + username +
+					"&service=" + testName +
+					"&testFile=" + util.str.encodeUrl(getDownloadUrl(jmeterTestFile)) +
+					"&manifestFile=" + util.str.encodeUrl(getDownloadUrl(manifestFile)) +
+					"&traceFile=" + traces +
+					"&Action=Run";
+			System.out.println("INFO: Sending request to JOpera: " + body);
+			InvocationResult res = c.invoke(new InvocationRequest(RequestType.HTTP_POST, body));
+	
+			/* Example response:
+			<html>
+			<body>
+			The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-experiment1327698060878--cb55e97a-a5d9-418d-a9b0-f6621e0cd4fd">http://10.99.0.73:8081/memcached/autocles-experiment1327698060878--cb55e97a-a5d9-418d-a9b0-f6621e0cd4fd</a>
+			</body>
+			</html> */
+	
+			Element resultXml = res.getResultAsElement();
+			String result = util.xml.toString(resultXml);
+			util.xml.print(resultXml);
+			
+			String resource = null;
+			if(result.contains("Failed")) {
+				addMessage("Looks like the test execution failed. JOpera return value was: <pre>" + result + "</pre>");
+				return;
+			} else if(result.contains("The resource can be found at")) {
+				resource = XPathProcessor.evaluate("//a[1]/text()", resultXml);
+				resource = util.net.replaceHost(new URL(resource), memcachedHost).toString();
+			}
+	
+			/* JOpera response example:
+			   <experiment id="exp1368530132416">
+				<instance>http://127.0.0.1:8080/rest/ExperimentAutomation/ExeprimentAutomation/1.1/2</instance>
+				<client>
+				<results>http://127.0.0.1:8181/memcached/exp1368530132416-clientResults</results>
+				</client>
+				<service>
+				<live-feed>http://127.0.0.1:8181/memcached/exp1368530132416-live-feed-service.xml</live-feed>
+				<results>http://127.0.0.1:8181/memcached/exp1368530132416-serviceResults</results>
+				</service>
+				<controller>
+				<live-feed>http://127.0.0.1:8181/memcached/exp1368530132416-live-feed-controller.xml</live-feed>
+				<results>http://127.0.0.1:8181/memcached/exp1368530132416-controllerResults</results>
+				</controller>
+				</experiment>
+			 */
+
+			// TODO: 
+
+			/* features:
+			 * - running 1 trace
+			 * - generating traces
+			 * - queuing traces
+			 * - showing the queue in the GUI
+			 * - as soon as results arrive, show results for queue entries
+			*/
+
+			addMessage("Test successfully started.");
+			if(resource != null) {
+				addMessage("Details will be published under " + resource);
+			}
+			
+		} catch (Exception e) {
+			addMessage("Error trying to start test execution", e);
 		}
-		if(traces.endsWith(" , ")) {
-			traces = traces.substring(0, traces.length() - separator.length());
-		}
-		String body = "customer=" + username +
-				"&service=" + testName +
-				"&testFile=" + util.str.encodeUrl(getDownloadUrl(jmeterTestFile)) +
-				"&manifestFile=" + util.str.encodeUrl(getDownloadUrl(manifestFile)) +
-				"&traceFile=" + traces +
-				"&Action=Run";
-		System.out.println("INFO: Sending request to JOpera: " + body);
-		InvocationResult res = c.invoke(new InvocationRequest(RequestType.HTTP_POST, body));
-
-		// TODO: parse 
-		/* <html>
-<body>
-The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-experiment1327698060878--cb55e97a-a5d9-418d-a9b0-f6621e0cd4fd">http://10.99.0.73:8081/memcached/autocles-experiment1327698060878--cb55e97a-a5d9-418d-a9b0-f6621e0cd4fd</a>
-</body>
-</html> */
-
-		util.xml.print(res.getResultAsElement());
-
-		/* JOpera response example:
-		   <experiment id="exp1368530132416">
-			<instance>http://127.0.0.1:8080/rest/ExperimentAutomation/ExeprimentAutomation/1.1/2</instance>
-			<client>
-			<results>http://127.0.0.1:8181/memcached/exp1368530132416-clientResults</results>
-			</client>
-			<service>
-			<live-feed>http://127.0.0.1:8181/memcached/exp1368530132416-live-feed-service.xml</live-feed>
-			<results>http://127.0.0.1:8181/memcached/exp1368530132416-serviceResults</results>
-			</service>
-			<controller>
-			<live-feed>http://127.0.0.1:8181/memcached/exp1368530132416-live-feed-controller.xml</live-feed>
-			<results>http://127.0.0.1:8181/memcached/exp1368530132416-controllerResults</results>
-			</controller>
-			</experiment>
-		 */
-
-		// TODO: read IDs of workflows from result
-
-		// TODO: read experiment ID to read data from memcached
-		
-		// TODO: 
-
-		/* features:
-		 * - running 1 trace
-		 * - generating traces
-		 * - queuing traces
-		 * - showing the queue in the GUI
-		 * - as soon as results arrive, show results for queue entries
-		*/
-
-		addMessage("Test successfully started.");
 	}
 
 	public void updateParameter() {
@@ -323,8 +359,7 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 		final String proxy = getParam("proxy");
 		String relativeTo = getParam("relativeTo");
 		String toJSON = getParam("toJSON");
-		System.out.println("Downloading file " + fileURL + " (relativeTo='" + 
-				relativeTo + "', proxy='" + proxy + "')");
+		logger.debug("Downloading file " + fileURL + " (relativeTo='" + relativeTo + "', proxy='" + proxy + "')");
 		if(util.str.isEmpty(fileURL)) {
 			System.out.println("WARN: Empty file URL specified for download.");
 			return null;
@@ -520,17 +555,34 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 		DataTableBean result = new DataTableBean();
 		String content;
 		try {
-			System.out.println("Downloading results from: " + url);
-			content = util.io.readURL(url);
-			// need to inject newlines into the files..
-			content = injectJtlNewlines(content);
-			int count = 0;
-			for(String line : content.split("\n")) {
-				if(++count > 1) {
-					//System.out.println(line);
-					String[] entries = line.split(",");
-					if(entries.length > 1) {
-						result.addRow(new DataTableBeanRow((Object[])entries));
+			content = util.io.readURL(url).trim();
+			if(content.startsWith("<")) {
+				Element contentEl = util.xml.toElement(content);
+				TestRequests exes = TestRequests.parse(contentEl);
+				for(TestRequest exe : exes.requests) {
+					result.addRow(new DataTableBeanRow(new Object[]{
+							exe.getTimestamp(),
+							"-",
+							"-",
+							exe.isSuccess(),
+							"-",
+							"-",
+							"-",
+							exe.getRequest()
+					}));
+				}
+			} else {
+				// need to inject newlines into the files..
+				// TODO: legacy - still needed?
+				content = injectJtlNewlines(content);
+				int count = 0;
+				for(String line : content.split("\n")) {
+					if(++count > 1) {
+						//System.out.println(line);
+						String[] entries = line.split(",");
+						if(entries.length > 1) {
+							result.addRow(new DataTableBeanRow((Object[])entries));
+						}
 					}
 				}
 			}
@@ -539,6 +591,26 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 			addMessage("Unable to download result file from '" + url + "': " + e);
 		}
 		return result;
+	}
+
+	/* TODO */
+	public String getJmeterUrlToOpen() {
+		String url = getParam("jmeterFileURL");
+		if(util.str.isEmpty(url))
+			return null;
+		try {
+			System.out.println("Opening file URL using JMeter: " + url);
+			logger.info("Opening file URL using JMeter: " + url);
+			String content = util.io.readURL(url);
+			String file = "/tmp/jmeter.tmp." + Math.random();
+			util.io.saveFile(file, content);
+			String[] out = util.io.exec("/usr/bin/jmeter " + file, true);
+			System.out.println(out[0]);
+			System.out.println(out[1]);
+		} catch (Exception e) {
+			addMessage("Error opening URL with JMeter: '" + url + "'", e);
+		}
+		return url;
 	}
 
 	/* GETTERS/SETTERS WITH HELPER FUNCTIONALITY */
@@ -605,7 +677,7 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 		genTraces = new DataTableBean();
 	}
 	public void genTraceSave() {
-		 String spec = "120:"; // TODO user-input
+		 String spec = traceLength + ":";
 		 for(int i = 0; i < genTraces.getRows().size(); i ++) {
 			 DataTableBeanRow row = genTraces.getRows().get(i);
 			 spec += "client" + (i+1) + "," +
@@ -790,7 +862,7 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 	}
 	public void setJoperaEndpoint(String joperaEndpoint) {
 		this.joperaEndpoint = joperaEndpoint;
-		jopera = new JOpera(joperaEndpoint);
+		jopera = new JOpera(joperaEndpoint, proxyResolver);
 	}
 	public String getAppName() {
 		return testName;
@@ -816,5 +888,10 @@ The resource can be found at <a href="http://10.99.0.73:8081/memcached/autocles-
 	public String getJoperaUI() {
 		return joperaUI;
 	}
-
+	public String getTraceLength() {
+		return traceLength;
+	}
+	public void setTraceLength(String traceLength) {
+		this.traceLength = traceLength;
+	}
 }

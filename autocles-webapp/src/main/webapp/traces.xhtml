@@ -61,7 +61,8 @@
 		</h:column>
 	</h:dataTable>
 	<h:commandButton value="Reset Clients" action="#{uiBean.genTraceReset}"/>
-	<h:commandButton value="Add Client" action="#{uiBean.genTraceAddClient}"/>
+	<h:commandButton value="Add Client" action="#{uiBean.genTraceAddClient}"/><br/>
+	Trace Length (sec): <h:inputText value="#{uiBean.traceLength}" style="width: 50px;"></h:inputText>
 	<h:commandButton value="Save Trace" action="#{uiBean.genTraceSave}"/>
  	<h2>Upload Trace Files</h2>
  	<r:fileUpload fileUploadListener="#{uiBean.uploadFile}">
