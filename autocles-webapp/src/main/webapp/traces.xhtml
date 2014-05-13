@@ -1,0 +1,76 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:x="http://myfaces.apache.org/extensions"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:r="http://richfaces.org/rich"
+	xmlns:t="http://myfaces.apache.org/tomahawk">
+ <body>
+ <h:form>
+ 	<h1>Test Traces</h1>
+ 	<h:messages style="color:red;margin:8px;" />
+
+ 	<h:dataTable value="#{uiBean.traces.rows}" var="t">
+		<h:column>
+			<f:facet name="header">URL</f:facet>
+			<a href='#{uiBean.url("t=traces",uiBean.cat("trace=",uiBean.gsub(t.col1, "=", "%3D")))}'>#{t.col1}</a>
+		</h:column>
+		<h:column>
+			<f:facet name="header">Trace Length</f:facet>
+			#{t.col2}
+		</h:column>
+		<h:column>
+			<f:facet name="header">Actions</f:facet>
+			<a href='#{uiBean.url("t=traces",uiBean.cat("trace=",t.col1))}'>Show Details</a><br/>
+			<a href="#{t.col1}" target="_blank">Show Source File</a>
+		</h:column>
+	</h:dataTable>
+	<h:panelGroup rendered='#{uiBean.param("trace") != null}'>
+	<h2>Trace Details</h2>
+	<iframe src='#{uiBean.getTraceFrame(uiBean.param("trace"))}' 
+		style="width: 100%; height: 450px; border: 1px solid #999999;"></iframe>
+	</h:panelGroup>
+	<h2>Add Trace URL</h2>
+ 	<table>
+ 		<tr>
+ 			<td>Trace URL</td><td><h:inputText value="#{uiBean.traceURL}" style="width: 200px;"/></td>
+ 		</tr><tr>
+ 			<td></td><td><h:commandButton value="Save" action="#{uiBean.addTrace}"/></td>
+ 		</tr>
+ 	</table>
+	<h2>Generate Trace</h2>
+	<h:dataTable value="#{uiBean.genTraces.rows}" var="t">
+		<ui:param name="testAttr" value='#{uiBean.cat("test=",t.col1)}' />
+		<h:column>
+			<f:facet name="header">Client</f:facet>
+			#{t.col1}
+		</h:column>
+		<h:column>
+			<f:facet name="header">Type</f:facet>
+			<h:selectOneMenu value="#{t.col2}">
+			   	<f:selectItem itemValue="sine" itemLabel="Sine Curve" />
+			   	<f:selectItem itemValue="square" itemLabel="Square Curve" />
+			   	<f:selectItem itemValue="triangle" itemLabel="Triangle Curve" />
+			   	<f:selectItem itemValue="sawtooth" itemLabel="Sawtooth Curve" />
+			</h:selectOneMenu>
+		</h:column>
+		<h:column>
+			<f:facet name="header">Parameters</f:facet>
+			<h:inputText value="#{t.col3}" style="width: 200px;"/>
+		</h:column>
+	</h:dataTable>
+	<h:commandButton value="Reset Clients" action="#{uiBean.genTraceReset}"/>
+	<h:commandButton value="Add Client" action="#{uiBean.genTraceAddClient}"/><br/>
+	Trace Length (sec): <h:inputText value="#{uiBean.traceLength}" style="width: 50px;"></h:inputText>
+	<h:commandButton value="Save Trace" action="#{uiBean.genTraceSave}"/>
+ 	<h2>Upload Trace Files</h2>
+ 	<r:fileUpload fileUploadListener="#{uiBean.uploadFile}">
+ 			<!-- uploadData="#{uiBean.uploadData}" -->
+		<f:facet name="label">
+			<h:outputText value="{_KB}KB of {KB}KB uploaded - {mm}:{ss}" />
+		</f:facet>
+	</r:fileUpload>
+ </h:form>
+ </body>
+</html>

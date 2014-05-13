@@ -1,0 +1,80 @@
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"
+	xmlns:ui="http://java.sun.com/jsf/facelets"
+	xmlns:h="http://java.sun.com/jsf/html"
+	xmlns:f="http://java.sun.com/jsf/core"
+	xmlns:x="http://myfaces.apache.org/extensions"
+	xmlns:c="http://java.sun.com/jstl/core"
+	xmlns:r="http://richfaces.org/rich"
+	xmlns:t="http://myfaces.apache.org/tomahawk">
+ <head>
+  <script type="text/javascript" src="js/jquery-1.9.1.js"></script>
+ </head>
+ <body>
+ <h:form>
+ 	<h1>Live Visualization</h1>
+ 	<h:messages style="color:red;margin:8px;" />
+ 	<h:panelGroup rendered='#{uiBean.param("test") == null || uiBean.param("inst") == null}'>
+ 		Please select a test instance from the <i>Tests</i> tab.
+ 	</h:panelGroup>
+ 	<h:panelGroup rendered='#{uiBean.param("test") != null &amp;&amp; uiBean.param("inst") != null}'>
+ 		<iframe id="configFrame" src='#{uiBean.getProxyUrl(uiBean.selectedTest.instance(uiBean.param("inst")).row.col3)}' 
+ 			style="width: 29%; height: 500px; border: 1px solid #999999;">
+ 		</iframe>
+ 		<iframe id="chartFrame" 
+ 			style="width: 69%; height: 500px; border: 1px solid #999999; float: left">
+ 		</iframe>
+ 	</h:panelGroup>
+ 	<script type="text/javascript">
+ 		collect = function(c, f) {
+			var a = [];
+			$.each(c, function(k, v) {
+				var val = false;
+				if(!f) {
+					a.push(v);
+				} else {
+					val = f(k, v);
+					if(val) {
+						a.push(val);
+					}
+				}
+			});
+			return a;
+ 		};
+
+ 		$("#configFrame").ready(function() {
+ 			var asyncFunc = function() {
+	 			$("#configFrame").contents().find("[value='Add another chart']").click();
+	 			$("#configFrame").ready(function(){
+	 	 			$("#configFrame").contents().find("[value='Add another chart']").remove();
+	 	 			$("#configFrame").contents().find("[value='Generate charts']").remove();
+	 	 			$("#configFrame").contents().find("[value='Remove chart']").remove();
+	 	 			$("#configFrame").contents().find("[id='Chart0|appendData']").remove();
+	 	 			$("#configFrame").contents().find("[id='Chart0|shiftData']").remove();
+	 	 			$("#configFrame").contents().find("fieldset").contents().filter(
+	 	 					function(){ return this.nodeType == 3 &amp;&amp; 
+	 	 						(this.data.indexOf("AppendData") >= 0 ||
+	 	 								this.data.indexOf("shiftData") >= 0); }
+	 	 			).remove();
+	 	 			$("#configFrame").contents().find("[type='checkbox']").click(function() {
+	 	 				var id = $(this).attr("id").split("|")[0];
+	 	 				var ids = collect($("#configFrame").contents().find("input:checked"),
+	 	 						function(k,v){
+	 	 							return $(v).attr("id").split("|")[1];
+	 	 						}).join(":");
+	 	 				//alert(ids);
+	 	 				//alert($(this).attr("id").split("|")[0] + " - " + this);
+	 	 				var url = '#{uiBean.getProxyUrl(uiBean.catURLs(
+	 	 						uiBean.selectedTest.instance(uiBean.param("inst")).row.col3,
+	 	 						"/mepgui/charts%3FChart0=5000,30,true,true,"))}';
+	 	 				url = url + ids;
+	 	 				//alert(url);
+	 	 				$("#chartFrame").contents().get(0).location.href = url;
+	 	 			});
+	 	 		});
+	 		};
+ 			setTimeout(asyncFunc, 500);
+ 		});
+ 	</script>
+ </h:form>
+ </body>
+</html>
